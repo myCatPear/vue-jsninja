@@ -53,6 +53,7 @@
           <button
             class="my-4 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
             v-on:click="page += 1"
+            v-if="hasNextPage"
           >
             Forward
           </button>
@@ -155,10 +156,23 @@ export default {
       graph: [],
       page: 1,
       filter: "",
+      hasNextPage: true,
     };
   },
 
   created() {
+    const windowData = Object.fromEntries(
+      new URL(window.location).searchParams.entries()
+    );
+
+    if (windowData.filter) {
+      this.filter = windowData.filter;
+    }
+
+    if (windowData.page) {
+      this.page = windowData.page;
+    }
+
     const tickesData = localStorage.getItem("cryptonomikon-list");
     if (tickesData) {
       this.tickers = JSON.parse(tickesData);
@@ -170,9 +184,13 @@ export default {
     filtredTickers() {
       const start = (this.page - 1) * 6;
       const end = this.page * 6;
-      return this.tickers
-        .filter((ticker) => ticker.name.includes(this.filter))
-        .slice(start, end);
+      const filtredTickers = this.tickers.filter((ticker) =>
+        ticker.name.includes(this.filter)
+      );
+
+      this.hasNextPage = filtredTickers.length > end;
+
+      return filtredTickers.slice(start, end);
     },
     subscribeToUpdates(tickerName) {
       setInterval(async () => {
@@ -213,6 +231,24 @@ export default {
       const minValue = Math.min(...this.graph);
       return this.graph.map(
         (price) => 5 + ((price - minValue) * 95) / (maxValue - minValue)
+      );
+    },
+  },
+  watch: {
+    filter() {
+      this.page = 1;
+      window.history.pushState(
+        null,
+        document.title,
+        `${window.location.pathname}?filter=${this.filter}&page=${this.page}`
+      );
+    },
+    page() {
+      this.page = 1;
+      window.history.pushState(
+        null,
+        document.title,
+        `${window.location.pathname}?filter=${this.filter}&page=${this.page}`
       );
     },
   },
